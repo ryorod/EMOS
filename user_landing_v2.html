@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Editor Memory OS — 動画編集者・クリエイター向け</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700;12..96,800&family=Noto+Sans+JP:wght@300;400;500&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#f6f3ee; --bg2:#eeeae1; --surface:#ffffff;
+    --ink:#1a1612; --muted:#7a7068;
+    --accent:#c94f2a; --accent2:#2b5ce0; --green:#1e9e6b;
+    --border:rgba(0,0,0,0.08);
+  }
+  *,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--ink);}
+  body::after{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.025'/%3E%3C/svg%3E");pointer-events:none;z-index:999;}
+  .page{max-width:860px;margin:0 auto;padding:52px 36px 80px;}
+
+  /* ── TOP ── */
+  .topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:72px;animation:up 0.5s ease both;}
+  .brand{display:flex;align-items:center;gap:10px;}
+  .brand-icon{width:32px;height:32px;background:var(--accent);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:16px;}
+  .brand-name{font-family:'Bricolage Grotesque',sans-serif;font-size:16px;font-weight:700;letter-spacing:-0.02em;}
+  .status-pill{background:var(--green);color:white;font-family:'Space Mono',monospace;font-size:10px;padding:5px 12px;border-radius:100px;letter-spacing:0.05em;}
+
+  /* ── HERO ── */
+  .hero{margin-bottom:64px;animation:up 0.5s 0.06s ease both;}
+  .hero-tag{display:inline-flex;align-items:center;gap:6px;background:#f5c842;color:var(--ink);font-family:'Space Mono',monospace;font-size:10px;padding:5px 12px;border-radius:100px;margin-bottom:20px;font-weight:700;}
+  .hero h1{font-family:'Bricolage Grotesque',sans-serif;font-size:50px;font-weight:800;line-height:1.05;letter-spacing:-0.04em;margin-bottom:20px;max-width:720px;}
+  .hero h1 .hl{color:var(--accent);position:relative;display:inline-block;}
+  .hero h1 .hl::after{content:'';position:absolute;bottom:2px;left:0;right:0;height:3px;background:var(--accent);opacity:0.25;border-radius:2px;}
+  .hero p{font-size:17px;color:var(--muted);line-height:1.75;max-width:560px;font-weight:300;}
+
+  .sec-label{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:0.2em;text-transform:uppercase;color:var(--muted);margin-bottom:20px;}
+
+  /* ── SEGMENTS ── */
+  .seg-section{margin-bottom:56px;animation:up 0.5s 0.10s ease both;}
+  .seg-tabs{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
+  .seg-tab{background:var(--surface);border:1.5px solid var(--border);border-radius:12px;padding:20px;transition:transform 0.2s,box-shadow 0.2s;cursor:default;}
+  .seg-tab:hover{transform:translateY(-3px);box-shadow:0 10px 28px rgba(0,0,0,0.07);}
+  .seg-tab .st-icon{font-size:26px;margin-bottom:10px;display:block;}
+  .seg-tab h4{font-family:'Bricolage Grotesque',sans-serif;font-size:14px;font-weight:700;margin-bottom:6px;}
+  .seg-tab p{font-size:11px;color:var(--muted);line-height:1.6;font-weight:300;}
+
+  /* ── PAIN ── */
+  .pain-section{margin-bottom:56px;animation:up 0.5s 0.13s ease both;}
+  .pain-cards{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;}
+  .pain-c{background:var(--surface);border:1.5px solid var(--border);border-radius:12px;padding:20px;transition:transform 0.2s,box-shadow 0.2s;}
+  .pain-c:hover{transform:translateY(-3px);box-shadow:0 12px 32px rgba(0,0,0,0.08);}
+  .pain-emoji{font-size:28px;margin-bottom:12px;display:block;}
+  .pain-c h4{font-family:'Bricolage Grotesque',sans-serif;font-size:14px;font-weight:700;margin-bottom:6px;}
+  .pain-c p{font-size:12px;color:var(--muted);line-height:1.65;font-weight:300;}
+
+  /* ── QUOTE ── */
+  .quote-block{background:var(--ink);color:white;border-radius:16px;padding:32px 36px;margin-bottom:56px;position:relative;overflow:hidden;animation:up 0.5s 0.16s ease both;}
+  .quote-block::before{content:'"';position:absolute;top:-20px;left:24px;font-family:'Bricolage Grotesque',sans-serif;font-size:160px;font-weight:800;color:rgba(255,255,255,0.04);line-height:1;pointer-events:none;}
+  .quote-block p{font-family:'Bricolage Grotesque',sans-serif;font-size:22px;font-weight:600;line-height:1.45;letter-spacing:-0.02em;max-width:600px;position:relative;z-index:1;}
+  .quote-block p em{font-style:normal;color:#f5c842;}
+
+  /* ── FEATURES ── */
+  .feature-section{margin-bottom:56px;animation:up 0.5s 0.18s ease both;}
+  .feature-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+  .feat{background:var(--surface);border:1.5px solid var(--border);border-radius:12px;padding:22px 24px;display:flex;gap:16px;transition:box-shadow 0.2s;}
+  .feat:hover{box-shadow:0 8px 24px rgba(0,0,0,0.06);}
+  .feat-icon{font-size:24px;flex-shrink:0;}
+  .feat h4{font-family:'Bricolage Grotesque',sans-serif;font-size:15px;font-weight:700;margin-bottom:5px;}
+  .feat p{font-size:12px;color:var(--muted);line-height:1.6;font-weight:300;}
+  .feat .tag{display:inline-block;margin-top:8px;background:var(--bg2);font-family:'Space Mono',monospace;font-size:9px;padding:3px 8px;border-radius:4px;color:var(--muted);letter-spacing:0.05em;}
+
+  /* ── WORKFLOW ── */
+  .workflow-section{margin-bottom:56px;animation:up 0.5s 0.20s ease both;}
+  .workflow-flow{background:var(--surface);border:1.5px solid var(--border);border-radius:12px;overflow:hidden;}
+  .wf-head{background:var(--bg2);padding:14px 20px;border-bottom:1px solid var(--border);font-family:'Space Mono',monospace;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);}
+  .wf-steps{display:flex;}
+  .wf-step{flex:1;padding:16px;border-right:1px solid var(--border);text-align:center;}
+  .wf-step:last-child{border-right:none;}
+  .wf-step.ours{background:rgba(201,79,42,0.04);}
+  .wf-num{font-family:'Space Mono',monospace;font-size:9px;color:var(--muted);margin-bottom:6px;}
+  .wf-step h4{font-family:'Bricolage Grotesque',sans-serif;font-size:12px;font-weight:700;margin-bottom:4px;line-height:1.3;}
+  .wf-step.ours h4{color:var(--accent);}
+  .wf-step p{font-size:10px;color:var(--muted);font-weight:300;}
+
+  /* ── INTERVIEW ── */
+  .interview-section{margin-bottom:56px;animation:up 0.5s 0.22s ease both;}
+  .interview-intro{background:rgba(43,92,224,0.06);border:1.5px solid rgba(43,92,224,0.15);border-radius:12px;padding:20px 24px;margin-bottom:20px;font-size:14px;color:var(--accent2);line-height:1.6;}
+  .q-list{display:flex;flex-direction:column;gap:10px;}
+  .q-item{background:var(--surface);border:1.5px solid var(--border);border-radius:10px;padding:14px 18px;display:flex;gap:14px;align-items:flex-start;}
+  .q-num{font-family:'Space Mono',monospace;font-size:11px;color:var(--accent);flex-shrink:0;padding-top:1px;}
+  .q-item p{font-size:13px;line-height:1.55;color:var(--ink);}
+  .q-item p strong{color:var(--accent);font-weight:600;}
+
+  /* ── TARGET ── */
+  .target-section{margin-bottom:56px;animation:up 0.5s 0.24s ease both;}
+  .target-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;}
+  .target-card{background:var(--surface);border:1.5px solid var(--border);border-radius:12px;padding:16px 18px;}
+  .target-card .icon{font-size:20px;margin-bottom:8px;display:block;}
+  .target-card h4{font-family:'Bricolage Grotesque',sans-serif;font-size:12px;font-weight:700;margin-bottom:5px;line-height:1.3;}
+  .target-card p{font-size:11px;color:var(--muted);line-height:1.5;font-weight:300;}
+
+  /* ── CTA ── */
+  .cta-section{background:var(--accent);border-radius:20px;padding:40px;color:white;display:flex;justify-content:space-between;align-items:center;animation:up 0.5s 0.28s ease both;}
+  .cta-section h3{font-family:'Bricolage Grotesque',sans-serif;font-size:26px;font-weight:800;letter-spacing:-0.03em;line-height:1.25;max-width:400px;}
+  .cta-section h3 span{background:rgba(255,255,255,0.2);padding:0 4px;border-radius:4px;}
+  .cta-right{text-align:right;flex-shrink:0;}
+  .cta-note{font-size:12px;opacity:0.7;margin-bottom:12px;font-weight:300;}
+  .cta-btn{display:inline-block;background:white;color:var(--accent);font-family:'Bricolage Grotesque',sans-serif;font-size:14px;font-weight:700;padding:12px 24px;border-radius:100px;text-decoration:none;letter-spacing:-0.01em;}
+
+  @keyframes up{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:translateY(0);}}
+
+  @media(max-width:640px){
+    .page{padding:32px 20px 60px;}
+    .hero h1{font-size:34px;}
+    .seg-tabs,.pain-cards,.feature-grid,.target-row{grid-template-columns:1fr;}
+    .wf-steps{flex-direction:column;}
+    .wf-step{border-right:none;border-bottom:1px solid var(--border);text-align:left;}
+    .cta-section{flex-direction:column;gap:24px;text-align:center;}
+    .cta-right{text-align:center;}
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="topbar">
+    <div class="brand">
+      <div class="brand-icon">🎬</div>
+      <div class="brand-name">Editor Memory OS</div>
+    </div>
+    <div class="status-pill">▸ Early Access</div>
+  </div>
+
+  <div class="hero">
+    <div class="hero-tag">🎯 動画編集者・クリエイター向け</div>
+    <h1>良いシーンを<span class="hl">速く</span>見つけ、<br>素材を<span class="hl">資産</span>にする。</h1>
+    <p>AIが映像を解析してハイライト候補を複数提示。消していい素材を提案し、捨てた素材をいつでも再発見できる。探す・迷う・消せないをなくして、編集に集中できる。</p>
+  </div>
+
+  <!-- SEGMENTS -->
+  <div class="seg-section">
+    <div class="sec-label">こんな方に使ってほしい</div>
+    <div class="seg-tabs">
+      <div class="seg-tab">
+        <span class="st-icon">🎬</span>
+        <h4>動画編集者・制作チーム</h4>
+        <p>撮影のたびに大量のデータが発生する。納期が決まっている現場では、良いシーンを速く見つける力が品質に直結する。ブライダル、ライブ、MV、CM など。</p>
+      </div>
+      <div class="seg-tab">
+        <span class="st-icon">📹</span>
+        <h4>コンテンツクリエイター</h4>
+        <p>継続的に動画を投稿するほど、撮影データは蓄積し続ける。整理・検索・再利用の手間はジャンルや頻度に関係なくなくならない。YouTube、Vlog、企業SNS など。</p>
+      </div>
+      <div class="seg-tab">
+        <span class="st-icon">🏠</span>
+        <h4>個人・家族の記録</h4>
+        <p>子供の成長、旅行、結婚式。大切な映像ほど「消せない・整理できない」が続く。ハイライトを自動で抽出して、思い出を埋もれさせない。</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- PAIN -->
+  <div class="pain-section">
+    <div class="sec-label">解決したい痛み</div>
+    <div class="pain-cards">
+      <div class="pain-c">
+        <span class="pain-emoji">⏱️</span>
+        <h4>良いシーンを探すのに時間がかかる</h4>
+        <p>大量の素材からハイライトを手動で探す。その時間が編集の律速になっている。納期がある現場ではなおさら。</p>
+      </div>
+      <div class="pain-c">
+        <span class="pain-emoji">🫣</span>
+        <h4>消していいか判断できない</h4>
+        <p>「後で使うかも」という不安で何も捨てられない。容量不足より、消せないことが本質的な問題。</p>
+      </div>
+      <div class="pain-c">
+        <span class="pain-emoji">🗂️</span>
+        <h4>捨てた素材を後から漁る</h4>
+        <p>「捨てたつもり」の素材が実は使えた。削除は終わりじゃない。ゴミ箱から掘り起こせて、いつでも再発見できる設計が必要。</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- QUOTE -->
+  <div class="quote-block">
+    <p>動画を撮れば、素材は溜まる。<br><em>問題はいつも、「あのシーン、どこだっけ」から始まる。</em></p>
+  </div>
+
+  <!-- FEATURES -->
+  <div class="feature-section">
+    <div class="sec-label">主な機能</div>
+    <div class="feature-grid">
+      <div class="feat">
+        <div class="feat-icon">✨</div>
+        <div>
+          <h4>ハイライト候補を複数抽出</h4>
+          <p>映像全体を解析し、感情・動き・音量などからハイライト候補を複数提示。サムネイル向きシーンも別途サジェスト。なぜそのシーンかの根拠も表示する。</p>
+          <span class="tag">複数候補 ＋ 根拠付き</span>
+        </div>
+      </div>
+      <div class="feat">
+        <div class="feat-icon">🗑️</div>
+        <div>
+          <h4>消していい候補を提案する</h4>
+          <p>重複・ピンボケ・長期未使用・失敗テイクを検出して候補として提示。自動では削除しない。「消せない不安」を根拠付きの提案で解消する。</p>
+          <span class="tag">提案のみ · 実行は人間が判断</span>
+        </div>
+      </div>
+      <div class="feat">
+        <div class="feat-icon">♻️</div>
+        <div>
+          <h4>捨てた素材をいつでも再発見</h4>
+          <p>アーカイブした素材はいつでも検索・復元できる。削除は終わりじゃない。一度捨てたカットを後から掘り起こして使える。</p>
+          <span class="tag">完全復元保証 30日</span>
+        </div>
+      </div>
+      <div class="feat">
+        <div class="feat-icon">🔍</div>
+        <div>
+          <h4>自然言語で素材検索</h4>
+          <p>「笑顔、屋外、夕方」など話し言葉で検索できる。文字起こし・OCR・シーン認識を統合。ファイル名整理は不要。</p>
+          <span class="tag">AI 文字起こし + シーン認識</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- WORKFLOW -->
+  <div class="workflow-section">
+    <div class="sec-label">編集フローに自然に入り込む</div>
+    <div class="workflow-flow">
+      <div class="wf-head">実際の編集フロー（ユーザーインタビューより）</div>
+      <div class="wf-steps">
+        <div class="wf-step">
+          <div class="wf-num">01</div>
+          <h4>いらないシーンをカット</h4>
+          <p>明確なゴミを除去</p>
+        </div>
+        <div class="wf-step ours">
+          <div class="wf-num">02</div>
+          <h4>ハイライト候補を複数残す</h4>
+          <p>ここを自動化する</p>
+        </div>
+        <div class="wf-step">
+          <div class="wf-num">03</div>
+          <h4>テンポ見つつ候補を絞る</h4>
+          <p>人間の判断</p>
+        </div>
+        <div class="wf-step ours">
+          <div class="wf-num">04</div>
+          <h4>ハイライトを軸に再調整</h4>
+          <p>再利用提案が出る</p>
+        </div>
+        <div class="wf-step">
+          <div class="wf-num">05</div>
+          <h4>字幕 → SE</h4>
+          <p>仕上げ</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- INTERVIEW -->
+  <div class="interview-section">
+    <div class="sec-label">インタビューに参加してください</div>
+    <div class="interview-intro">
+      製品を作る前に、<strong>実際の現場の声</strong>を集めています。プロの編集者から個人クリエイター、家族の記録まで、動画に関わっているどんな方でも歓迎です。30分・オンライン・無料です。
+    </div>
+    <div class="q-list">
+      <div class="q-item">
+        <div class="q-num">Q1</div>
+        <p>ハイライトや使えるシーンを探すとき、<strong>今どんな方法でやっていますか？どのくらい時間がかかりますか？</strong></p>
+      </div>
+      <div class="q-item">
+        <div class="q-num">Q2</div>
+        <p>素材を「消したいけど消せない」と感じることはありますか？<strong>何が怖くて残していますか？</strong></p>
+      </div>
+      <div class="q-item">
+        <div class="q-num">Q3</div>
+        <p>「一度捨てた素材を後から使った」ことはありますか？<strong>どんな状況でしたか？</strong></p>
+      </div>
+      <div class="q-item">
+        <div class="q-num">Q4</div>
+        <p>サムネイルのシーン選びで、<strong>自分の直感と実際の反応がズレた</strong>経験はありますか？</p>
+      </div>
+      <div class="q-item">
+        <div class="q-num">Q5</div>
+        <p>今使っているツールで、<strong>一番ストレスを感じる瞬間</strong>はどこですか？</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- TARGET -->
+  <div class="target-section">
+    <div class="sec-label">特に話を聞きたい方</div>
+    <div class="target-row">
+      <div class="target-card">
+        <span class="icon">🎬</span>
+        <h4>プロの動画編集者</h4>
+        <p>ブライダル、ライブ、MV・CM など、納期のある現場で編集している方。</p>
+      </div>
+      <div class="target-card">
+        <span class="icon">📹</span>
+        <h4>コンテンツクリエイター</h4>
+        <p>YouTube・Vlog など、継続的に動画を制作・投稿している方。</p>
+      </div>
+      <div class="target-card">
+        <span class="icon">🏢</span>
+        <h4>企業の動画担当</h4>
+        <p>採用・広報・D2C など、インハウスで動画制作をしている方。</p>
+      </div>
+      <div class="target-card">
+        <span class="icon">🏠</span>
+        <h4>個人・家族の記録</h4>
+        <p>子供の成長・旅行・結婚式など、大切な映像を整理したい方。</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- CTA -->
+  <div class="cta-section">
+    <h3>素材を<span>探す・迷う・消せない</span>を、なくそう。</h3>
+    <div class="cta-right">
+      <div class="cta-note">30分・オンライン・無料</div>
+      <a href="mailto:hello@editormemory.io" class="cta-btn">インタビューに参加する →</a>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>
