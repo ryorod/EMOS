@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Editor Memory OS — Brief</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,700;0,9..144,900;1,9..144,300;1,9..144,700&family=IBM+Plex+Mono:wght@300;400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#0a0a08; --bg2:#111110; --surface:#161614; --surface2:#1e1e1b;
+    --border:rgba(255,255,255,0.06); --border2:rgba(255,255,255,0.12);
+    --ink:#e8e4dc; --muted:#6e6a60; --muted2:#9a9488;
+    --gold:#d4a843; --red:#c94f3a; --green:#4a9e6b; --blue:#4a7fc4;
+  }
+  *,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:'IBM Plex Sans',sans-serif;background:var(--bg);color:var(--ink);line-height:1.6;}
+  body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse 80% 60% at 50% 0%,rgba(212,168,67,0.04) 0%,transparent 60%);pointer-events:none;z-index:0;}
+  .page{position:relative;z-index:1;max-width:920px;margin:0 auto;padding:60px 44px 100px;}
+
+  /* ── COMMON ── */
+  .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:72px;animation:rise 0.7s ease both;}
+  .wordmark{font-family:'Fraunces',serif;font-size:22px;font-weight:700;letter-spacing:-0.02em;}
+  .wordmark em{font-style:italic;color:var(--gold);}
+  .vs{text-align:right;}
+  .vs .v{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:0.15em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:4px;}
+  .vs .c{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted);opacity:0.6;}
+
+  .sec{margin-bottom:60px;animation:rise 0.7s ease both;}
+  .sec:nth-child(2){animation-delay:.05s} .sec:nth-child(3){animation-delay:.09s}
+  .sec:nth-child(4){animation-delay:.13s} .sec:nth-child(5){animation-delay:.17s}
+  .sec:nth-child(6){animation-delay:.20s} .sec:nth-child(7){animation-delay:.23s}
+  .sec:nth-child(8){animation-delay:.26s} .sec:nth-child(9){animation-delay:.29s}
+  .sec:nth-child(10){animation-delay:.32s} .sec:nth-child(11){animation-delay:.35s}
+
+  .sl{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:0.25em;text-transform:uppercase;color:var(--gold);margin-bottom:18px;display:flex;align-items:center;gap:10px;}
+  .sl::after{content:'';flex:1;height:1px;background:var(--border2);}
+
+  .thesis{border:1px solid var(--border2);border-left:3px solid var(--gold);padding:28px 32px;border-radius:0 6px 6px 0;background:var(--surface);margin-bottom:60px;animation:rise 0.7s 0.04s ease both;}
+  .thesis h2{font-family:'Fraunces',serif;font-size:30px;font-weight:900;line-height:1.2;letter-spacing:-0.03em;margin-bottom:14px;}
+  .thesis h2 em{font-style:italic;color:var(--gold);}
+  .thesis p{font-size:14px;color:var(--muted2);line-height:1.75;max-width:640px;font-weight:300;}
+
+  /* ── TARGET ── */
+  .target-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:0;border:1px solid var(--border2);border-radius:6px;overflow:hidden;margin-bottom:12px;}
+  .tg-col{padding:20px;border-right:1px solid var(--border);}
+  .tg-col:last-child{border-right:none;}
+  .tg-tier{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:0.15em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;}
+  .tg-col h4{font-family:'Fraunces',serif;font-size:15px;font-weight:700;margin-bottom:8px;color:var(--gold);}
+  .tg-col p{font-size:11px;color:var(--muted2);line-height:1.6;font-weight:300;}
+  .tg-reason{margin-top:10px;padding-top:10px;border-top:1px solid var(--border);font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--green);letter-spacing:0.06em;line-height:1.5;}
+  .tg-examples{margin-top:8px;font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted);line-height:1.6;}
+  .seg-note{font-size:12px;color:var(--muted2);line-height:1.65;padding:14px 18px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;font-weight:300;}
+  .seg-note strong{color:var(--ink);font-weight:500;}
+
+  /* ── WHY NOW ── */
+  .why-now-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .wn-card{background:var(--surface);border:1px solid var(--border2);border-radius:6px;padding:18px 20px;}
+  .wn-card .wn-icon{font-size:16px;margin-bottom:8px;display:block;}
+  .wn-card h4{font-size:13px;font-weight:600;margin-bottom:5px;}
+  .wn-card p{font-size:12px;color:var(--muted2);line-height:1.6;font-weight:300;}
+
+  /* ── WHY US ── */
+  .why-us-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .wu-card{background:var(--surface);border:1px solid var(--border2);border-radius:6px;padding:20px 22px;}
+  .wu-card .wu-icon{font-size:18px;margin-bottom:10px;display:block;}
+  .wu-card h4{font-size:13px;font-weight:600;margin-bottom:6px;}
+  .wu-card p{font-size:12px;color:var(--muted2);line-height:1.6;font-weight:300;}
+  .wu-card .now{display:inline-block;margin-top:10px;background:rgba(74,158,107,0.1);border:1px solid rgba(74,158,107,0.2);font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--green);padding:3px 8px;border-radius:2px;letter-spacing:0.06em;}
+  .wu-card .later{display:inline-block;margin-top:10px;background:var(--surface2);border:1px solid var(--border);font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted);padding:3px 8px;border-radius:2px;letter-spacing:0.06em;}
+
+  /* ── DIFF ── */
+  .diff-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .diff-card{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:18px 20px;}
+  .diff-card .d-icon{font-size:18px;margin-bottom:10px;display:block;}
+  .diff-card h4{font-size:13px;font-weight:600;margin-bottom:6px;}
+  .diff-card p{font-size:12px;color:var(--muted2);line-height:1.6;font-weight:300;}
+  .diff-card .d-tag{display:inline-block;margin-top:8px;font-family:'IBM Plex Mono',monospace;font-size:9px;padding:2px 8px;border-radius:2px;letter-spacing:0.06em;}
+  .d-now{background:rgba(74,158,107,0.1);color:var(--green);border:1px solid rgba(74,158,107,0.2);}
+  .d-mid{background:rgba(212,168,67,0.1);color:var(--gold);border:1px solid rgba(212,168,67,0.2);}
+
+  /* ── MARKET (bottom-up) ── */
+  .market-wrap{display:flex;flex-direction:column;gap:12px;}
+  .bu-table{width:100%;border-collapse:collapse;font-size:12px;border:1px solid var(--border2);border-radius:6px;overflow:hidden;}
+  .bu-table th{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);text-align:left;padding:10px 14px;border-bottom:1px solid var(--border2);font-weight:400;background:var(--surface2);}
+  .bu-table td{padding:12px 14px;border-bottom:1px solid var(--border);color:var(--muted2);font-size:12px;vertical-align:top;font-weight:300;}
+  .bu-table tr:last-child td{border-bottom:none;}
+  .bu-table td:first-child{color:var(--ink);font-weight:500;}
+  .bu-table td.num{font-family:'IBM Plex Mono',monospace;color:var(--gold);font-size:11px;}
+  .bu-table tr.total td{background:rgba(212,168,67,0.04);border-top:1px solid var(--border2);}
+  .bu-table tr.total td:first-child{color:var(--gold);}
+  .market-note{font-size:11px;color:var(--muted2);padding:12px 16px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;line-height:1.6;font-weight:300;}
+  .market-note strong{color:var(--ink);font-weight:500;}
+
+  /* ── COLD START ── */
+  .cs-track{border:1px solid var(--border2);border-radius:8px;overflow:hidden;}
+  .cs-step{display:grid;grid-template-columns:40px 1fr;border-bottom:1px solid var(--border);}
+  .cs-step:last-child{border-bottom:none;}
+  .cs-num{background:var(--surface2);display:flex;align-items:center;justify-content:center;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--gold);font-weight:500;border-right:1px solid var(--border);}
+  .cs-body{padding:16px 20px;background:var(--surface);}
+  .cs-body h4{font-size:13px;font-weight:600;margin-bottom:4px;}
+  .cs-body p{font-size:12px;color:var(--muted2);line-height:1.5;font-weight:300;}
+  .cs-tag{display:inline-block;margin-top:6px;font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--green);background:rgba(74,158,107,0.1);border:1px solid rgba(74,158,107,0.2);padding:2px 8px;border-radius:2px;letter-spacing:0.08em;}
+
+  /* ── MOAT ── */
+  .moat-table{width:100%;border-collapse:collapse;font-size:12px;}
+  .moat-table th{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);text-align:left;padding:10px 14px;border-bottom:1px solid var(--border2);font-weight:400;}
+  .moat-table td{padding:13px 14px;border-bottom:1px solid var(--border);color:var(--muted2);font-size:12px;line-height:1.5;vertical-align:top;font-weight:300;}
+  .moat-table tr:last-child td{border-bottom:none;}
+  .moat-table td:first-child{color:var(--ink);font-weight:500;}
+  .moat-table .us td{background:rgba(212,168,67,0.04);}
+  .moat-table .us td:first-child{color:var(--gold);}
+  .chip{display:inline-block;font-family:'IBM Plex Mono',monospace;font-size:9px;padding:2px 7px;border-radius:2px;letter-spacing:0.06em;}
+  .chip.g{background:rgba(74,158,107,0.12);color:var(--green);border:1px solid rgba(74,158,107,0.2);}
+  .chip.r{background:rgba(201,79,58,0.12);color:var(--red);border:1px solid rgba(201,79,58,0.2);}
+  .chip.y{background:rgba(212,168,67,0.12);color:var(--gold);border:1px solid rgba(212,168,67,0.2);}
+
+  /* ── TRUST ── */
+  .trust-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
+  .trust-card{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:18px 20px;}
+  .trust-card .t-icon{font-size:20px;margin-bottom:10px;display:block;}
+  .trust-card h4{font-size:13px;font-weight:600;margin-bottom:6px;}
+  .trust-card p{font-size:11px;color:var(--muted2);line-height:1.55;font-weight:300;}
+
+  /* ── ROADMAP ── */
+  .rm{display:grid;grid-template-columns:repeat(3,1fr);border:1px solid var(--border2);border-radius:6px;overflow:hidden;}
+  .rm-col{padding:20px;border-right:1px solid var(--border);}
+  .rm-col:last-child{border-right:none;}
+  .rm-label{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:0.15em;text-transform:uppercase;color:var(--gold);margin-bottom:6px;}
+  .rm-col h4{font-size:13px;font-weight:600;margin-bottom:12px;}
+  .rm-col ul{list-style:none;}
+  .rm-col ul li{font-size:11px;color:var(--muted2);padding:3px 0 3px 14px;position:relative;font-weight:300;line-height:1.5;}
+  .rm-col ul li::before{content:'›';position:absolute;left:0;color:var(--gold);opacity:0.6;}
+  .rm-kpi{margin-top:12px;padding-top:10px;border-top:1px solid var(--border);font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--green);letter-spacing:0.06em;line-height:1.5;}
+
+  /* ── COLLAB (new) ── */
+  .collab-box{background:var(--surface);border:1px solid var(--border2);border-radius:8px;overflow:hidden;}
+  .collab-head{background:rgba(74,127,196,0.08);border-bottom:1px solid var(--border2);padding:18px 24px;}
+  .collab-head h3{font-family:'Fraunces',serif;font-size:20px;font-weight:700;letter-spacing:-0.02em;margin-bottom:6px;}
+  .collab-head h3 em{font-style:italic;color:var(--blue);}
+  .collab-head p{font-size:12px;color:var(--muted2);font-weight:300;line-height:1.6;max-width:580px;}
+  .collab-grid{display:grid;grid-template-columns:1fr 1fr;gap:0;}
+  .collab-col{padding:20px 24px;border-right:1px solid var(--border);}
+  .collab-col:last-child{border-right:none;}
+  .collab-col .cl-label{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:0.15em;text-transform:uppercase;color:var(--blue);margin-bottom:12px;}
+  .collab-col ul{list-style:none;}
+  .collab-col ul li{font-size:12px;color:var(--muted2);padding:4px 0 4px 16px;position:relative;font-weight:300;line-height:1.55;}
+  .collab-col ul li::before{content:'›';position:absolute;left:0;color:var(--blue);opacity:0.5;}
+  .collab-col ul li strong{color:var(--ink);font-weight:500;}
+  .collab-foot{padding:16px 24px;border-top:1px solid var(--border);background:var(--surface2);}
+  .collab-foot p{font-size:12px;color:var(--muted2);line-height:1.6;font-weight:300;}
+  .collab-foot p strong{color:var(--ink);font-weight:500;}
+
+  /* ── BOTTOM ── */
+  .bottom{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:56px;animation:rise 0.7s 0.4s ease both;}
+  .bottom-card{background:var(--surface);border:1px solid var(--border2);border-radius:6px;padding:24px;}
+  .bottom-card h4{font-family:'Fraunces',serif;font-size:15px;font-weight:700;letter-spacing:-0.02em;margin-bottom:10px;color:var(--gold);}
+  .bottom-card p{font-size:12px;color:var(--muted2);line-height:1.65;font-weight:300;}
+  .bottom-card p strong{color:var(--ink);font-weight:500;}
+
+  .thesis-close{margin-top:16px;background:var(--surface);border:1px solid var(--border2);border-left:3px solid var(--gold);border-radius:0 6px 6px 0;padding:24px 28px;animation:rise 0.7s 0.44s ease both;}
+  .thesis-close p{font-family:'Fraunces',serif;font-size:18px;font-weight:700;font-style:italic;color:var(--ink);line-height:1.4;letter-spacing:-0.01em;}
+  .thesis-close p em{font-style:normal;color:var(--gold);}
+
+  @keyframes rise{from{opacity:0;transform:translateY(18px);}to{opacity:1;transform:translateY(0);}}
+
+  @media(max-width:660px){
+    .page{padding:32px 20px 60px;}
+    .thesis h2{font-size:22px;}
+    .target-grid,.why-now-grid,.why-us-grid,.diff-grid,.trust-row,.rm,.bottom,.collab-grid{grid-template-columns:1fr;}
+    .tg-col,.rm-col,.collab-col{border-right:none;border-bottom:1px solid var(--border);}
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="header">
+    <div class="wordmark">Editor <em>Memory</em> OS</div>
+    <div class="vs">
+      <span class="v">Investor & Collaborator Brief</span>
+      <span class="c">Confidential · Pre-Seed</span>
+    </div>
+  </div>
+
+  <div class="thesis">
+    <h2>動画素材の<em>意思決定</em>を、<br>編集者ごとに自動化する。</h2>
+    <p>ストレージでも、AI編集でも、レビューツールでもない。「何を残すか・消すか・ハイライトか・サムネイルか」という判断そのものを売る。この判断レイヤーを中核価値にしている会社は、現時点で存在しない。</p>
+  </div>
+
+  <!-- TARGET -->
+  <div class="sec">
+    <div class="sl">Who We Serve — 誰に・なぜこの順で当たるか</div>
+    <div class="target-grid">
+      <div class="tg-col">
+        <div class="tg-tier">最初に当たる</div>
+        <h4>動画編集者・<br>制作チーム</h4>
+        <p>撮影のたびに大量のデータが発生する。納期が決まっている現場では「良いシーンを速く見つける」ことが直接売上に影響する。痛みが強く、支払い意欲が高い。</p>
+        <div class="tg-reason">痛みが実存的 → 支払い意欲が高い</div>
+        <div class="tg-examples">例：ブライダル、ライブ、MV・CM</div>
+      </div>
+      <div class="tg-col">
+        <div class="tg-tier">次に広げる</div>
+        <h4>コンテンツ<br>クリエイター</h4>
+        <p>継続投稿するほど素材は蓄積する。使う素材の構成が決まっていても、撮影データそのものの整理・検索・再利用の手間はなくならない。ボリュームが大きい。</p>
+        <div class="tg-reason">市場が大きい → ARR のボリュームを作る</div>
+        <div class="tg-examples">例：YouTube、Vlog、企業SNS</div>
+      </div>
+      <div class="tg-col">
+        <div class="tg-tier">その先へ</div>
+        <h4>個人・家族の<br>記録</h4>
+        <p>子供の成長、旅行、結婚式など「消せない・整理できない」が続く大量の映像。編集スキルがない分、AIへの依存度が高くなる。</p>
+        <div class="tg-reason">コンシューマーへの自然な拡張</div>
+        <div class="tg-examples">例：育児記録、旅行映像、ホームビデオ</div>
+      </div>
+    </div>
+    <div class="seg-note">
+      <strong>優先順位の根拠：</strong>最初は「痛みが最も強く、支払い意欲が最も高い層」から入る。プロの編集者は納期という外部圧力があるため、ツールへの課金判断が速い。市場規模ではなく痛みの深さで順番を決めている。
+    </div>
+  </div>
+
+  <!-- WHY NOW -->
+  <div class="sec">
+    <div class="sl">Why Now — なぜ今か</div>
+    <div class="why-now-grid">
+      <div class="wn-card">
+        <span class="wn-icon">📈</span>
+        <h4>動画素材量が構造的に増え続けている</h4>
+        <p>スマートフォンのカメラ性能向上・4K/8K の普及・Shorts 需要の増加により、クリエイター一人が扱うデータ量は毎年倍増している。管理コストが臨界点に近づいている。</p>
+      </div>
+      <div class="wn-card">
+        <span class="wn-icon">🧠</span>
+        <h4>基盤技術が揃った</h4>
+        <p>Whisper 系 ASR・CLIP 系埋め込み・シーン検出・pgvector などが OSS で使えるようになった。3年前はこの構成で作れなかった。今が参入の適切なタイミング。</p>
+      </div>
+      <div class="wn-card">
+        <span class="wn-icon">🤖</span>
+        <h4>AI 編集ツールへの期待が高まっている</h4>
+        <p>Descript・OpusClip・Adobe AI の普及でユーザーが「AIに素材判断を任せる」ことへの心理的障壁が下がっている。市場教育コストが低い。</p>
+      </div>
+      <div class="wn-card">
+        <span class="wn-icon">⚖️</span>
+        <h4>権利・収益分配の問題が顕在化してきた</h4>
+        <p>AI 生成素材の利用・クリエイター間のコラボ収益分配・二次利用許諾など、素材の「権利状態」を管理したいニーズが急速に高まっている。Onchain との相性が今後強くなる。</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- WHY US -->
+  <div class="sec">
+    <div class="sl">Why Us — なぜ今すぐ我々が勝てるか</div>
+    <div class="why-us-grid">
+      <div class="wu-card">
+        <span class="wu-icon">🎵</span>
+        <h4>AI × クリエイターワークフローの当事者経験</h4>
+        <p>Suno を使った AI 音楽自動生成・配信システムを Mac Mini 上で自作・運用中。「クリエイターが何に詰まるか」を外から観察するのではなく、自分が当事者として経験している。素材が溜まる・整理できない・再利用できないという痛みをリアルタイムで生きている。</p>
+        <span class="now">今すぐ効く</span>
+      </div>
+      <div class="wu-card">
+        <span class="wu-icon">🔧</span>
+        <h4>フルスタック実装能力 × 高い開発速度</h4>
+        <p>Web 開発の実務経験あり。MVP をゼロから外注なしで作れる。仮説検証のサイクルを週単位で回せることは、初期フェーズで最も重要な競争優位。アイデアの検証速度が資金力の差を埋める。</p>
+        <span class="now">今すぐ効く</span>
+      </div>
+      <div class="wu-card">
+        <span class="wu-icon">⛓️</span>
+        <h4>Blockchain × Creator Economy の専門知識</h4>
+        <p>本業はブロックチェーン・オンチェーンファイナンス。中期で狙う「素材の権利管理・収益分配・再利用許諾のオンチェーン化」は、Web3 の設計思想がないと正しく作れない。Dropbox・Frame.io・Adobe がここに踏み込むには組織的・文化的コストが高い。</p>
+        <span class="later">Phase 3 で差別化</span>
+      </div>
+      <div class="wu-card">
+        <span class="wu-icon">🇯🇵</span>
+        <h4>日本市場のゲートウェイ</h4>
+        <p>日本の YouTube クリエイターエコノミーは GDP 4,600 億円寄与・8.5 万人フルタイム相当。英語圏の競合は日本語対応・ローカライズが弱い。日本でビーチヘッドを作り、東アジア→グローバルへ展開する経路が取れる。</p>
+        <span class="now">今すぐ効く</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- DIFFERENTIATION -->
+  <div class="sec">
+    <div class="sl">Differentiation — 競合が持っていない差別化</div>
+    <div class="diff-grid">
+      <div class="diff-card">
+        <span class="d-icon">🗑️</span>
+        <h4>「消していい判断」を売る</h4>
+        <p>OpusClip・Descript・Adobe は「作る・切る・共有する」が強い。でも「この素材を消してもいいか」という判断を中核価値にしている会社はない。保存・共有・編集の三角形の外側にある領域。削除提案は地味に見えるが、「消せない不安」という感情的な痛みに直接刺さる。</p>
+        <span class="d-tag d-now">今すぐ差別化</span>
+      </div>
+      <div class="diff-card">
+        <span class="d-icon">♻️</span>
+        <h4>捨てた素材を再発見できる設計</h4>
+        <p>「一度捨てた素材を後から漁る」行動が実際に存在することをインタビューで確認。アーカイブと削除を設計レベルで分離し、捨てた素材をいつでも検索・復元できる。この思想を持つ競合は現時点で存在しない。</p>
+        <span class="d-tag d-now">今すぐ差別化</span>
+      </div>
+      <div class="diff-card">
+        <span class="d-icon">🧠</span>
+        <h4>編集者ごとのスタイル学習</h4>
+        <p>ハイライト抽出は他社も持ち始めているが、「あなたの判断基準を覚える」は誰もやっていない。使えば使うほど精度が上がる個人最適化の構造は、データが蓄積するほど乗り換えコストが上がり、堀になる。</p>
+        <span class="d-tag d-mid">中期で堀になる</span>
+      </div>
+      <div class="diff-card">
+        <span class="d-icon">⛓️</span>
+        <h4>Onchain Rights Layer</h4>
+        <p>素材の権利状態・再利用許諾・収益分配をオンチェーンで管理する。AI 学習への利用許諾管理など、今後の規制・契約環境の変化に対して最も備えができている構成。Web3 知識のない競合には参入障壁が高い。</p>
+        <span class="d-tag d-mid">Phase 3 で差別化</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- MARKET (bottom-up) -->
+  <div class="sec">
+    <div class="sl">Market Size — ボトムアップ試算</div>
+    <div class="market-wrap">
+      <table class="bu-table">
+        <thead>
+          <tr>
+            <th>セグメント</th>
+            <th>推計人口</th>
+            <th>想定年額</th>
+            <th>根拠</th>
+            <th>小計</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>プロ編集者・制作チーム（日本）</td>
+            <td class="num">〜5万人</td>
+            <td class="num">$600–$1,800</td>
+            <td style="font-size:11px;color:var(--muted2);font-weight:300;">ブライダル・ライブ等。納期圧力あり。Team $150/月に相当</td>
+            <td class="num">$30M–$90M</td>
+          </tr>
+          <tr>
+            <td>コンテンツクリエイター（日本）</td>
+            <td class="num">〜50万人</td>
+            <td class="num">$120–$480</td>
+            <td style="font-size:11px;color:var(--muted2);font-weight:300;">YPP 参加者ベース。Solo $10–$40/月に相当</td>
+            <td class="num">$60M–$240M</td>
+          </tr>
+          <tr>
+            <td>プロ編集者・制作チーム（英語圏）</td>
+            <td class="num">〜50万人</td>
+            <td class="num">$600–$1,800</td>
+            <td style="font-size:11px;color:var(--muted2);font-weight:300;">米国・英国・豪州の独立系編集者・小規模制作会社</td>
+            <td class="num">$300M–$900M</td>
+          </tr>
+          <tr>
+            <td>コンテンツクリエイター（英語圏）</td>
+            <td class="num">〜500万人</td>
+            <td class="num">$120–$480</td>
+            <td style="font-size:11px;color:var(--muted2);font-weight:300;">SignalFire 推計 5,000万人のうち継続投稿層 10%</td>
+            <td class="num">$600M–$2,400M</td>
+          </tr>
+          <tr class="total">
+            <td>SAM 合計（日本＋英語圏）</td>
+            <td class="num">—</td>
+            <td class="num">—</td>
+            <td style="font-size:11px;color:var(--muted2);font-weight:300;">東アジア・東南アジアは除外。保守的な試算。</td>
+            <td class="num">$1B–$3.6B</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="market-note">
+        <strong>SOM（3–5年）：$15M–$35M ARR。</strong>プロ編集者 5,000〜10,000 アカウント（blended $200/月）＋ クリエイター 50,000〜100,000 アカウント（blended $20/月）で到達可能。最初の12ヶ月は日本のプロ編集者 100 アカウントの獲得を最優先とする。
+      </div>
+    </div>
+  </div>
+
+  <!-- COLD START -->
+  <div class="sec">
+    <div class="sl">Cold Start 設計 — 使い始めから価値を出す</div>
+    <div class="cs-track">
+      <div class="cs-step">
+        <div class="cs-num">1</div>
+        <div class="cs-body">
+          <h4>Day 1：ルールベースで即座に価値を出す</h4>
+          <p>機械学習不要。完全重複・ピンボケ・無音・黒画面・手ブレは共通ルールで初日から検出。「使い始めなのに整理できた」体験を最初の10分で作る。</p>
+          <span class="cs-tag">ゼロ学習期間で初回価値</span>
+        </div>
+      </div>
+      <div class="cs-step">
+        <div class="cs-num">2</div>
+        <div class="cs-body">
+          <h4>Week 1〜4：用途別の共通パターンで先回り</h4>
+          <p>ブライダル・ライブ・Vlog など用途別の事前学習モデルを持つことで、個人学習前からある程度当たる候補を出せる。最初から「賢い」体験を提供する。</p>
+          <span class="cs-tag">Vertical-specific prior model</span>
+        </div>
+      </div>
+      <div class="cs-step">
+        <div class="cs-num">3</div>
+        <div class="cs-body">
+          <h4>Month 2〜：操作ログから個人最適化へ</h4>
+          <p>採用・却下・アーカイブのたびに重みを更新。20〜30 本分の素材で「このユーザーらしい候補」が出始める。学習の進捗を可視化してエンゲージメントを維持する。</p>
+          <span class="cs-tag">Personalization flywheel</span>
+        </div>
+      </div>
+      <div class="cs-step">
+        <div class="cs-num">4</div>
+        <div class="cs-body">
+          <h4>継続的に：全ユーザーのデータがモデルを強化する</h4>
+          <p>匿名化された操作ログが用途別モデルを継続改善。後発ユーザーほど初日から精度が高い。データが蓄積するほど後発競合が追いつけない構造になる。</p>
+          <span class="cs-tag">Data moat（時間差防衛）</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MOAT -->
+  <div class="sec">
+    <div class="sl">Competitive Landscape</div>
+    <table class="moat-table">
+      <thead>
+        <tr><th>競合</th><th>主戦場</th><th>削除提案</th><th>再発見設計</th><th>個人学習</th><th>追随コスト</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Dropbox / Google Drive</td><td>汎用保存・共有</td>
+          <td><span class="chip r">なし</span></td><td><span class="chip r">なし</span></td><td><span class="chip r">なし</span></td>
+          <td>動画は全体の一部。優先度が上がりにくい</td>
+        </tr>
+        <tr>
+          <td>Frame.io / Replay</td><td>レビュー・承認</td>
+          <td><span class="chip r">なし</span></td><td><span class="chip r">なし</span></td><td><span class="chip r">なし</span></td>
+          <td>Adobe 傘下。承認フロー中心で方向性が異なる</td>
+        </tr>
+        <tr>
+          <td>iconik</td><td>エンタープライズ MAM</td>
+          <td><span class="chip y">部分的</span></td><td><span class="chip r">なし</span></td><td><span class="chip r">なし</span></td>
+          <td>中〜大規模向け。小規模向け UX への転換コストが高い</td>
+        </tr>
+        <tr>
+          <td>Descript / OpusClip</td><td>AI 編集・クリップ化</td>
+          <td><span class="chip r">なし</span></td><td><span class="chip r">なし</span></td><td><span class="chip r">なし</span></td>
+          <td>「作る」側。「整理・判断」側は製品戦略外</td>
+        </tr>
+        <tr class="us">
+          <td>✦ Editor Memory OS</td><td>素材判断・再利用</td>
+          <td><span class="chip g">中核</span></td><td><span class="chip g">中核</span></td><td><span class="chip g">中核</span></td>
+          <td>—</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- TRUST -->
+  <div class="sec">
+    <div class="sl">Trust Design</div>
+    <div class="trust-row">
+      <div class="trust-card">
+        <span class="t-icon">🚫</span>
+        <h4>自動削除は絶対にしない</h4>
+        <p>AI は「候補を出す」だけ。実行は必ず人間の承認が必要。「提案」と「実行」を設計レベルで分離する。</p>
+      </div>
+      <div class="trust-card">
+        <span class="t-icon">🔄</span>
+        <h4>アーカイブ ≠ 削除</h4>
+        <p>移動は低コストストレージへの退避のみ。30日以内は無条件で復元できる。捨てた素材を後から再発見・再利用できる。</p>
+      </div>
+      <div class="trust-card">
+        <span class="t-icon">📊</span>
+        <h4>提案には根拠を添える</h4>
+        <p>「最終使用: 90日前・類似素材: 3本」など判断の根拠を必ず表示。盲目的に信頼させるのではなく、判断を補助する。</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ROADMAP -->
+  <div class="sec">
+    <div class="sl">Roadmap</div>
+    <div class="rm">
+      <div class="rm-col">
+        <div class="rm-label">Phase 1 · 0–2mo</div>
+        <h4>Core MVP</h4>
+        <ul>
+          <li>動画アップロード・同期</li>
+          <li>文字起こし / OCR / シーン分割</li>
+          <li>ルールベース重複・失敗テイク検出</li>
+          <li>ハイライト候補抽出（複数）</li>
+          <li>サムネイル候補サジェスト</li>
+          <li>自然言語検索 UI</li>
+          <li>用途別 prior model</li>
+        </ul>
+        <div class="rm-kpi">KPI：編集者 10人が「検索で助かった」</div>
+      </div>
+      <div class="rm-col">
+        <div class="rm-label">Phase 2 · 3–6mo</div>
+        <h4>Personalization</h4>
+        <ul>
+          <li>操作ログ学習 → 個人最適化</li>
+          <li>Shorts / 再利用候補サジェスト</li>
+          <li>復元保証フロー強化</li>
+          <li>Dropbox / Drive 連携</li>
+          <li>精度進捗の可視化</li>
+          <li>価格検証・PMF 判定</li>
+        </ul>
+        <div class="rm-kpi">KPI：アーカイブ採用率 20%+</div>
+      </div>
+      <div class="rm-col">
+        <div class="rm-label">Phase 3 · 7–12mo</div>
+        <h4>Rights Layer（β）</h4>
+        <ul>
+          <li>素材ごとの権利・許諾状態管理</li>
+          <li>再利用時の収益分配台帳</li>
+          <li>チームワークスペース</li>
+          <li>Premiere / DaVinci 連携</li>
+          <li>AI 学習許諾フラグ</li>
+          <li>Onchain 記録（β）</li>
+        </ul>
+        <div class="rm-kpi">KPI：Team プラン 50社</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- COLLABORATOR -->
+  <div class="sec">
+    <div class="sl">Looking For — 一緒に作る人を探しています</div>
+    <div class="collab-box">
+      <div class="collab-head">
+        <h3>このプロジェクトを<em>一緒に動かしたい人</em>へ</h3>
+        <p>今は投資家を探す前に、現場を知っている人・作れる人と最初の検証を動かしたいと思っています。完成品ではなく、仮説を一緒に壊してくれる人を探しています。</p>
+      </div>
+      <div class="collab-grid">
+        <div class="collab-col">
+          <div class="cl-label">特に話したい人</div>
+          <ul>
+            <li><strong>動画編集者・映像制作者</strong>：実際の素材で試してほしい。感想が一番の資産になる</li>
+            <li><strong>エンジニア（映像処理・ML）</strong>：FFmpeg・シーン検出・埋め込みベクトルを触ったことがある人</li>
+            <li><strong>フロントエンド / UX</strong>：素材管理の体験設計を一緒に考えたい</li>
+            <li><strong>ブライダル・ライブ業界の関係者</strong>：現場の実態を教えてほしい</li>
+          </ul>
+        </div>
+        <div class="collab-col">
+          <div class="cl-label">今できること・提供できること</div>
+          <ul>
+            <li>プロダクトの共同設計・初期開発</li>
+            <li>ブロックチェーン × クリエイターエコノミーの知見共有</li>
+            <li>AI 音楽自動生成システムの実装経験</li>
+            <li>将来的な equity・報酬の相談に応じる</li>
+            <li>週次で進捗を共有し、一緒に仮説を検証する</li>
+          </ul>
+        </div>
+      </div>
+      <div class="collab-foot">
+        <p>今すぐ一緒にやる必要はありません。<strong>「素材を見せてもいい」「話を聞いてもいい」</strong>から始めてもらえれば十分です。</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="bottom">
+    <div class="bottom-card">
+      <h4>残るリスクと答え</h4>
+      <p>
+        <strong>① 支払い意欲：</strong>月額価格の根拠がまだ未検証。最初の10人への Wizard of Oz 検証で確認する。<br><br>
+        <strong>② BYO ストレージの複雑性：</strong>MVP ではローカルアップロードに限定。横断検索は Phase 2 以降。<br><br>
+        <strong>③ ハイライト抽出の精度：</strong>競合も持ち始めているが、削除提案・再発見・個人学習との組み合わせで差別化する。
+      </p>
+    </div>
+    <div class="bottom-card">
+      <h4>次の 6 週間</h4>
+      <p>
+        <strong>① 編集者 5〜10人に素材を借りる</strong>（Wizard of Oz で手動候補リストを返す）<br><br>
+        <strong>② 反応を見て仮説を修正する</strong>（「これが欲しい」が出たら何が欲しいかを深掘り）<br><br>
+        <strong>③ ルールベース検出だけ動くスクリプトを作る</strong>（重複・無音・手ブレの3つだけ）<br><br>
+        <strong>④ PMF 基準：</strong>「これがないと毎週困る」が 7/10 人以上 → 開発加速
+      </p>
+    </div>
+  </div>
+
+  <div class="thesis-close">
+    <p>ストレージを売らない。編集を売らない。<br>
+    <em>「何を残すか」という判断を売る。</em><br>
+    そのデータが堀になる。</p>
+  </div>
+
+</div>
+</body>
+</html>
